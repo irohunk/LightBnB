@@ -30,7 +30,7 @@ const users = require("./json/users.json");
 
 const getUserWithEmail = (email) => {
   return pool
-    .query(`SELECT * FROM users WHERE email = $1`, [email])
+    .query(`SELECT * FROM users WHERE email = $1`, [email.toLowerCase()])
     .then((result) => {
       if (result.rows.length === 0) {
         return null;
@@ -105,8 +105,19 @@ const addUser = (name, email, password) => {
  * @param {string} guest_id The id of the user.
  * @return {Promise<[{}]>} A promise to the reservations.
  */
+// const getAllReservations = function (guest_id, limit = 10) {
+//   return getAllProperties(null, 2);
+// };
+
 const getAllReservations = function (guest_id, limit = 10) {
-  return getAllProperties(null, 2);
+  return pool
+    .query('SELECT reservations.id, reservations.start_date, reservations.end_date, properties.title, properties.description, properties.cost_per_night FROM reservations JOIN properties ON properties.id = reservations.property_id WHERE reservations.guest_id = $1 LIMIT $2;', [guest_id, limit])
+    .then((result) => {
+      return result.rows
+    })
+    .catch((err) => {
+      console.log(err.message);
+    });
 };
 
 /// Properties
