@@ -130,40 +130,55 @@ const getAllReservations = function (guest_id, limit = 10) {
 const getAllProperties = function (options, limit = 10) {
   const queryParams = [];
   let queryString = `
-    SELECT properties.*, avg(property_reviews.rating) as average_rating
-    FROM properties
-    JOIN property_reviews ON properties.id = property_id
+  SELECT properties.*, avg(property_reviews.rating) as average_rating
+  FROM properties
+  JOIN property_reviews ON properties.id = property_id
   `;
 
-  queryString = addFilter(options, queryParams, queryString, 'city', 'LIKE', 'city');
-  queryString = addFilter(options, queryParams, queryString, 'owner_id', '=', 'owner_id');
+  let hasWhereClause = false;
+
+  if (options.city) {
+    queryParams.push(`%${options.city}%`);
+    queryString += `WHERE city LIKE $${queryParams.length} `;
+    hasWhereClause = true;
+  }
+
+  if (options.owner_id) {
+    queryParams.push(options.owner_id);
+    queryString += `${hasWhereClause ? 'AND' : 'WHERE'} owner_id = $${queryParams.length} `;
+    hasWhereClause = true;
+  }
 
   if (options.minimum_price_per_night) {
     queryParams.push(options.minimum_price_per_night * 100);
-    queryString += `AND cost_per_night >= $${queryParams.length} `;
+    queryString += `${hasWhereClause ? 'AND' : 'WHERE'} cost_per_night >= $${queryParams.length} `;
+    hasWhereClause = true;
   }
 
   if (options.maximum_price_per_night) {
     queryParams.push(options.maximum_price_per_night * 100);
-    queryString += `AND cost_per_night <= $${queryParams.length} `;
+    queryString += `${hasWhereClause ? 'AND' : 'WHERE'} cost_per_night <= $${queryParams.length} `;
+    hasWhereClause = true;
   }
 
   if (options.minimum_rating) {
     queryParams.push(options.minimum_rating);
-    queryString += `AND avg(property_reviews.rating) >= $${queryParams.length} `;
+    queryString += `${hasWhereClause ? 'AND' : 'WHERE'} avg(property_reviews.rating) >= $${queryParams.length} `;
+    hasWhereClause = true;
   }
 
   queryParams.push(limit);
   queryString += `
-    GROUP BY properties.id
-    ORDER BY cost_per_night
-    LIMIT $${queryParams.length};
+  GROUP BY properties.id
+  ORDER BY cost_per_night
+  LIMIT $${queryParams.length};
   `;
 
   console.log(queryString, queryParams);
 
   return pool.query(queryString, queryParams).then((res) => res.rows);
 };
+
 
 /**
  * Add a property to the database
